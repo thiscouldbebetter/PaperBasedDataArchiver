@@ -2,9 +2,14 @@
 
 	<head>
 		<style>
-			input
+			input[type=number]
 			{
 				width: 64px;
+			}
+
+			canvas
+			{
+				border: 1px solid;
 			}
 		</style>
 	</head>
@@ -24,7 +29,7 @@
 
 	<div>
 		<label>Data as Base64:</label>
-		<button onclick="buttonDemo_Clicked()">Load Demo</button>
+		<button onclick="buttonDemo_Clicked()">Generate Random Data</button>
 		<label>Load from File:</label>
 		<input
 			id="inputFileBytes"
@@ -97,13 +102,34 @@
 			type="file"
 			onchange="inputFileImage_Changed(this)"
 		/>
+		<button onclick="buttonDrawCharacterGrid_Clicked()">Draw Character Grid as Overlay</button>
 		<br />
-		<div id="divImage" style="border: 1px solid">[none]</div>
+		<div id="divImage">[none]</div>
 	</div>
 
 </div>
 
 <script type="text/javascript">
+
+function buttonBase64ToImage_Clicked()
+{
+	var d = document;
+
+	var textareaDataAsBase64 =
+		d.getElementById("textareaDataAsBase64");
+	var dataAsBase64 = textareaDataAsBase64.value;
+	var dataAsBytes = btoa(dataAsBase64);
+
+	var page = Page.fromDocument(d);
+
+	page.dataAsBytesSet(dataAsBytes);
+
+	var pageAsCanvas = page.toCanvasForDocument(d);
+
+	var divImage = d.getElementById("divImage");
+	divImage.innerHTML = "";
+	divImage.appendChild(pageAsCanvas);
+}
 
 function buttonDemo_Clicked()
 {
@@ -113,10 +139,7 @@ function buttonDemo_Clicked()
 
 	var pageSizeInChars = page.sizeInChars();
 
-	var charsInOrder =
-		"0123456789"
-		+ "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		+ "abcdefghijklmnopqrstuvwxyz";
+	var charsInOrder = Base64.digitsInOrder();
 
 	var linesSoFar = [];
 
@@ -143,24 +166,11 @@ function buttonDemo_Clicked()
 	textareaDataAsBase64.value = linesSoFar.join("");
 }
 
-function buttonBase64ToImage_Clicked()
+function buttonDrawCharacterGrid_Clicked()
 {
 	var d = document;
-
-	var textareaDataAsBase64 =
-		d.getElementById("textareaDataAsBase64");
-	var dataAsBase64 = textareaDataAsBase64.value;
-	var dataAsBytes = btoa(dataAsBase64);
-
 	var page = Page.fromDocument(d);
-
-	page.dataAsBytesSet(dataAsBytes);
-
-	var pageAsCanvas = page.toCanvasForDocument(d);
-
-	var divImage = d.getElementById("divImage");
-	divImage.innerHTML = "";
-	divImage.appendChild(pageAsCanvas);
+	page.characterGridDraw();
 }
 
 function buttonImageToBase64_Clicked()
@@ -223,6 +233,30 @@ function inputFileImage_Changed(inputFileImage)
 }
 
 // Classes.
+
+class Base64
+{
+	static digitsInOrder()
+	{
+		var charsInOrder =
+			"0123456789"
+			+ "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			+ "abcdefghijklmnopqrstuvwxyz+/";
+
+		return charsInOrder;
+	}
+
+	static digitsAsCanvas()
+	{
+		var d = document;
+		var canvasForCharactersAvailable =
+			d.createElement("canvas");
+		var graphics = canvasForCharactersAvailable.getContext("2d");
+		todo
+
+	}
+
+}
 
 class Coords
 {
@@ -294,6 +328,20 @@ class Coords
 	}
 }
 
+class Font
+{
+	constructor(name, heightInPixels)
+	{
+		this.name = name;
+		this.heightInPixels = heightInPixels;
+	}
+
+	toSystemFont()
+	{
+		return this.heightInPixels + "px " + this.name;
+	}
+}
+
 class Page
 {
 	constructor
@@ -301,17 +349,17 @@ class Page
 		sizeInInches,
 		marginInInches,
 		pixelsPerInch,
-		fontName,
-		fontHeightInPixels,
-		dataAsBytes
+		font,
+		dataAsBytes,
+		dataAsCanvas
 	)
 	{
 		this.sizeInInches = sizeInInches;
 		this.marginInInches = marginInInches;
 		this.pixelsPerInch = pixelsPerInch;
-		this.fontName = fontName;
-		this.fontHeightInPixels = fontHeightInPixels;
+		this.font = font;
 		this.dataAsBytes = dataAsBytes;
+		this.dataAsCanvas = dataAsCanvas;
 	}
 
 	static fromDocument(document)
@@ -339,17 +387,68 @@ class Page
 		var fontHeightInPixels =
 			parseInt(d.getElementById("inputFontHeightInPixels").value);
 
+		var font = new Font(fontName, fontHeightInPixels);
+
+		var divImage = d.getElementById("divImage");
+		var dataAsCanvas = divImage.children[0]; // Will be null at first.
+
 		var page = new Page
 		(
 			pageSizeInInches,
 			marginSizeInInches,
 			pixelsPerInch,
-			fontName,
-			fontHeightInPixels,
-			null // dataAsBytes
+			font,
+			null, // dataAsBytes
+			dataAsCanvas
 		);
 
 		return page;
+	}
+
+	characterGridDraw()
+	{
+		if (this.dataAsCanvas != null)
+		{
+			var d = document;
+			var canvasForOverlay = d.createElement("canvas");
+			canvasForOverlay.width = this.dataAsCanvas.width;
+			canvasForOverlay.height = this.dataAsCanvas.height;
+
+			var graphics = canvasForOverlay.getContext("2d");
+			graphics.strokeStyle = "Cyan";
+
+			var sizeInChars = this.sizeInChars();
+			var charSizeInPixels = this.charSizeInPixels();
+			var drawPosInChars = new Coords(0, 0);
+			var drawPosInPixels = new Coords(0, 0);
+			var marginSizeInPixels = this.marginInPixels();
+
+			for (var y = 0; y < sizeInChars.y; y++)
+			{
+				drawPosInChars.y = y;
+
+				for (var x = 0; x < sizeInChars.x; x++)
+				{
+					drawPosInChars.x = x;
+
+					drawPosInPixels
+						.overwriteWith(drawPosInChars)
+						.multiply(charSizeInPixels)
+						.add(marginSizeInPixels)
+						.addXY(0, this.font.heightInPixels);
+
+					graphics.strokeRect
+					(
+						drawPosInPixels.x, drawPosInPixels.y - charSizeInPixels.y,
+						charSizeInPixels.x, charSizeInPixels.y
+					);
+				}
+			}
+
+			var graphics2 = this.dataAsCanvas.getContext("2d");
+			graphics2.drawImage(canvasForOverlay, 0, 0);
+		}
+
 	}
 
 	charSizeInPixels()
@@ -357,11 +456,10 @@ class Page
 		var d = document;
 		var canvas = d.createElement("canvas");
 		var graphics = canvas.getContext("2d");
-		graphics.font =
-			this.fontHeightInPixels + "px " + this.fontName;
+		graphics.font = this.font.toSystemFont();
 		var charMeasurement = graphics.measureText("M");
 		var charSizeInPixels =
-			new Coords(charMeasurement.width, this.fontHeightInPixels);
+			new Coords(charMeasurement.width, this.font.heightInPixels);
 
 		return charSizeInPixels;
 	}
@@ -370,6 +468,13 @@ class Page
 	{
 		this.dataAsBytes = values;
 		return this;
+	}
+
+	dataAsCanvasConvertToBytes()
+	{
+		// OCR.
+
+		todo
 	}
 
 	dataAsBase64()
@@ -439,9 +544,7 @@ class Page
 
 		var graphics = canvas.getContext("2d");
 		graphics.fillStyle = "Black";
-		graphics.font =
-			this.fontHeightInPixels + "px "
-			+ this.fontName;
+		graphics.font = this.font.toSystemFont();
 
 		var dataAsBase64 = this.dataAsBase64();
 
@@ -465,7 +568,7 @@ class Page
 					.overwriteWith(drawPosInChars)
 					.multiply(charSizeInPixels)
 					.add(marginSizeInPixels)
-					.addXY(0, this.fontHeightInPixels);
+					.addXY(0, this.font.heightInPixels);
 
 				var charOffset = y * sizeInChars.x + x;
 
@@ -479,7 +582,9 @@ class Page
 			}
 		}
 
-		return canvas;
+		this.dataAsCanvas = canvas;
+
+		return this.dataAsCanvas;
 	}
 }
 
