@@ -4,9 +4,10 @@ class Base64
 	static digitsInOrder()
 	{
 		var charsInOrder =
-			"0123456789"
-			+ "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-			+ "abcdefghijklmnopqrstuvwxyz+/";
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			+ "abcdefghijklmnopqrstuvwxyz";
+			+ "0123456789"
+			+ "+/";
 
 		return charsInOrder;
 	}

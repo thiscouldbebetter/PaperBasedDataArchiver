@@ -7,6 +7,11 @@ class Coords
 		this.y = y;
 	}
 
+	static zeroes()
+	{
+		return new Coords(0, 0);
+	}
+	
 	add(other)
 	{
 		this.x += other.x;
@@ -18,6 +23,20 @@ class Coords
 	{
 		this.x += x;
 		this.y += y;
+		return this;
+	}
+
+	ceiling()
+	{
+		this.x = Math.ceil(this.x);
+		this.y = Math.ceil(this.y);
+		return this;
+	}
+	
+	clear()
+	{
+		this.x = 0;
+		this.y = 0;
 		return this;
 	}
 
